@@ -1,8 +1,9 @@
 import csv
 import pandas as pd
 from datetime import datetime
+from ParameterConfig import ParameterConfig
 
-def calcSchoolYear(ENTRY_DATE):
+def calc_school_year(ENTRY_DATE):
     if pd.isnull(ENTRY_DATE):
         return None
 
@@ -12,16 +13,38 @@ def calcSchoolYear(ENTRY_DATE):
     else: # if month is before July, school year is previous year
         return ENTRY_DATE.year - 1
 
-def loomis_longwood_names(entry):
-    if "Loomis" in entry["SCHOOL_NAME"] and entry["GRADE_LEVEL"] > 2: # consider Loomis grades 3-8 as Longwood
-        return "Longwood HS"
-    else:
-        return entry["SCHOOL_NAME"]
+def school_name(entry, loomistoggle):
+    # Loomis K-2, Longwood ES 3-8
+    if loomistoggle:
+        if "Loomis" in entry["SCHOOL_NAME"] and entry["GRADE_LEVEL"] > 2: # consider Loomis grades 3-8 as Longwood ES
+            return "Longwood ES"
+        elif "Loomis" in entry["SCHOOL_NAME"] and entry["GRADE_LEVEL"] >= 0: # consider Loomis grades K-2 as Loomis
+            return "Loomis"
+        elif "Wrightwood" in entry["SCHOOL_NAME"]:
+            return "Wrightwood"
+        elif "Ellison" in entry["SCHOOL_NAME"]:
+            return "Ralph Ellison Academy"
+        else:
+            return entry["SCHOOL_NAME"]
 
+    # Loomis K-3, Longwood ES 4-8
+    else:
+        if "Loomis" in entry["SCHOOL_NAME"] and entry["GRADE_LEVEL"] > 3: # consider Loomis grades 4-8 as Longwood ES
+            return "Longwood ES"
+        elif "Loomis" in entry["SCHOOL_NAME"] and entry["GRADE_LEVEL"] >= 0: # consider Loomis grades K-3 as Loomis
+            return "Loomis"
+        elif "Wrightwood" in entry["SCHOOL_NAME"]:
+            return "Wrightwood"
+        elif "Ellison" in entry["SCHOOL_NAME"]:
+            return "Ralph Ellison Academy"
+        else:
+            return entry["SCHOOL_NAME"]
+        
 class DataCSV:
-    def __init__(self, filepath):
+    def __init__(self, filepath, loomistoggle=False):
         self.filepath = filepath # allows other methods access to the file path
         self.df = None # initializes an empty df to store the data
+        self.loomistoggle = loomistoggle
 
     def load(self):
         self.df = pd.read_csv(self.filepath) # read csv file and store in df
@@ -43,13 +66,26 @@ class DataCSV:
             "SCHOOL_NAME"
         ])
 
-        # cast numeric into ints
         self.df["HIGH_GRADE"] = self.df["HIGH_GRADE"].astype(int) # cast high grade to int  
         self.df["GRADE_LEVEL"] = self.df["GRADE_LEVEL"].astype(int) # cast grade level to int
+        self.df["school_year"] = self.df["ENTRY_DATE"].apply(calc_school_year) # get school year from entry date
+        self.df["SCHOOL_NAME"] = self.df.apply(lambda row: school_name(row, self.loomistoggle), axis=1)
 
-        self.df["school_year"] = self.df["ENTRY_DATE"].apply(calcSchoolYear) # get school year from entry date
+        # remove graduated students
+        self.df = self.df[self.df["SCHOOL_NAME"] != "Graduated Students"]
 
-        self.df["SCHOOL_NAME"] = self.df.apply(loomis_longwood_names, axis=1)
+        # if toggle on, Loomis is K-2 so high grade should be 2
+        if self.loomistoggle:
+            self.df.loc[self.df["SCHOOL_NAME"] == "Loomis", "HIGH_GRADE"] = 2
+        # if toggle off, Loomis is K-3 so high grade should be 3
+        else: 
+            self.df.loc[self.df["SCHOOL_NAME"] == "Loomis", "HIGH_GRADE"] = 3
+
+        # create a combined Loomis Longwood K-12 entry
+        new_entries = self.df[self.df["SCHOOL_NAME"].str.contains("Longwood|Loomis", na=False)].copy()
+        new_entries["SCHOOL_NAME"] = "Loomis Longwood K-12"
+        new_entries["HIGH_GRADE"] = 12
+        self.df = pd.concat([self.df, new_entries], ignore_index=True)
 
     def getdf(self):
         return self.df # to use cleaned df in other methods
