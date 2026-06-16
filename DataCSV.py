@@ -75,8 +75,7 @@ class DataCSV:
         self.df = self.df[self.df["SCHOOL_NAME"] != "Graduated Students"]
 
         # remove invalid schools
-        self.df = self.df[~self.df["SCHOOL_NAME"].isin(["DONT USE", "Quest", "Boy's Lab", "Jackson", "Larry", 
-                                                       "Global", "Inactive", "Summer", "STRIDE"])]
+        self.df = self.df[~self.df["SCHOOL_NAME"].str.contains("DONT USE|Quest|Boy's Lab|Jackson|Larry|Global|Inactive|Summer|STRIDE", case=False)]
 
         # if toggle on, Loomis is K-2 so high grade should be 2
         if self.loomistoggle:
