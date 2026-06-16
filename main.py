@@ -6,7 +6,7 @@ from datetime import datetime
 from DataCSV import DataCSV
 from ParameterConfig import ParameterConfig
 from RetentionCalculator import RetentionCalculator
-
+from GraduatingClassesCalculator import GraduatingClassesCalculator
 
 # hide the main root window
 root = tk.Tk()
@@ -34,13 +34,20 @@ if filepath:
 
     config = ParameterConfig(baseyear, numyears, loomistoggle)
 
-    calculator = RetentionCalculator(df, config)
-    retention_rates = calculator.run()
-
+    retention_calculator = RetentionCalculator(df, config)
+    retention_rates = retention_calculator.run()
     print(retention_rates)
     
     # graph trends for 1-year retention
-    graph = calculator.graph()
+    retention_graph = retention_calculator.graph()
+    plt.show()
+
+    # display the graduating classes
+    graduating_classes = GraduatingClassesCalculator(df, config)
+    graduating_tenure = graduating_classes.calculate_years()
+    print(graduating_tenure)
+
+    tenure_graph = graduating_classes.graph()
     plt.show()
 
 else:
