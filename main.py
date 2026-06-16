@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import datetime
 from DataCSV import DataCSV
 from ParameterConfig import ParameterConfig
@@ -36,6 +37,11 @@ if filepath:
     retention_rates = calculator.run()
 
     print(retention_rates)
+    
+    # graph trends for 1-year retention
+    graph = calculator.graph()
+    plt.show()
+
 else:
     print("No file was selected.")
 

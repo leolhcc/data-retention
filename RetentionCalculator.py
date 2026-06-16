@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class RetentionCalculator:
     def __init__(self, df, config):
@@ -70,10 +71,9 @@ class RetentionCalculator:
             retained_count = school_retained.get(school_name, 0) # the 0 means default to 0
 
             rate = (retained_count / eligible_count) * 100
-
             rates.append((school_name, rate))
 
-        self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
+        self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE']).sort_values(by='RETENTION_RATE', ascending=False)
 
     def run(self):
         self.build_eligible_entries()
@@ -81,3 +81,55 @@ class RetentionCalculator:
         self.calculate_retention_rates()
 
         return self.retention_rates
+
+
+    # graph YoY retention over multiple years
+    def graph(self):    
+        fig, ax = plt.subplots()
+
+        baseyear = self.config.baseyear
+        targetyear = self.config.targetyear
+
+        years = list(range(baseyear, targetyear))
+        historical_retention = {}
+
+        # collect retention rates across the years
+        for i in range(self.config.numyears):
+            self.config.baseyear = baseyear + i
+            self.config.targetyear = baseyear + i + 1
+            self.config.base20th = pd.Timestamp(year=self.config.baseyear, month=10, day=1)
+            self.config.target20th = pd.Timestamp(year=self.config.targetyear, month=10, day=1)
+
+            rates_df = self.run()
+
+            for _, row in rates_df.iterrows():
+                school = row['SCHOOL_NAME']
+                rate = row['RETENTION_RATE']
+                historical_retention.setdefault(school, [None] * self.config.numyears)[i] = rate
+            self.config.baseyear += 1       
+
+        print(f"\n--- historical_retention ---")
+        for school, rates in historical_retention.items():
+            print(f"{school}: {rates}")
+
+        # reset values
+        self.config.baseyear = baseyear
+        self.config.targetyear = targetyear
+        self.config.base20th = pd.Timestamp(year=baseyear, month=10, day=1)
+        self.config.target20th = pd.Timestamp(year=targetyear, month=10, day=1)
+        
+        # skip schools without a retention rate for each year
+        for school_name, rates in historical_retention.items():
+            if None not in rates:
+                ax.plot(years, rates, marker='o', label=school_name)
+
+        # configure graph
+        ax.set_xlim(baseyear - 1, targetyear)
+        ax.set_ylim(0, 100)
+        ax.set_xticks(years)
+        ax.set_title(f"Yearly Retention from SY{baseyear}-{targetyear}")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Retention Rate (%)")
+        ax.legend()
+
+        return fig
