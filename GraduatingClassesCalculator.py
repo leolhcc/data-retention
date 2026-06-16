@@ -72,8 +72,6 @@ class GraduatingClassesCalculator:
                 tenure_percentage = (count / total) * 100
                 schools.append({"school": school_name, "tenure": tenure, "percentage": tenure_percentage})
 
-                # schools.append((school_name, tenure, tenure_percentage))
-
         self.tenure_data = pd.DataFrame(schools)
         return self.tenure_data
     
