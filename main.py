@@ -6,6 +6,7 @@ from DataCSV import DataCSV
 from ParameterConfig import ParameterConfig
 from RetentionCalculator import RetentionCalculator
 
+
 # hide the main root window
 root = tk.Tk()
 root.withdraw()
@@ -27,15 +28,17 @@ if filepath:
 
     # inputs (base year, number of years forward)
     baseyear = int(input("Enter the base year (2024 for SY24-25): "))
-    numyears = int(input("Enter the number of years forward: "))
     loomistoggle = input("Loomis K-2, Longwood 3-8? (y/n) Otherwise Loomis K-3, Longwood 4-8: ").lower() == 'y'
 
-    config = ParameterConfig(baseyear, numyears, loomistoggle)
+    config = ParameterConfig(baseyear, loomistoggle)
+    config.get_target_years(df)
 
     calculator = RetentionCalculator(df, config)
     retention_rates = calculator.run()
 
     print(retention_rates)
+
+
 else:
     print("No file was selected.")
 
