@@ -73,7 +73,7 @@ class RetentionCalculator:
 
             rates.append((school_name, rate))
 
-        self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
+        self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE']).sort_values(by='RETENTION_RATE', ascending=False)
 
     def run(self):
         self.build_eligible_entries()
