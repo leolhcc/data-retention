@@ -1,5 +1,5 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 class RetentionCalculator:
     def __init__(self, df, config):
@@ -14,16 +14,14 @@ class RetentionCalculator:
         self.retention_rates = None
 
     def build_eligible_entries(self):
-        # filter entries where current year = base year
-        baseyear_df = self.df[self.df['school_year'] == self.config.baseyear] 
+        eligibility = (
+          (self.df["school_year"] == self.config.baseyear) # filter entries where current year = base year
+          & (self.df["ENTRY_DATE"] <= self.config.base20th) # check that entry date <= Oct 1
+          & (self.df["EXIT_DATE"] >= self.config.base20th) # check that exit date >= Oct 1
+          & (self.df["GRADE_LEVEL"] < self.df["HIGH_GRADE"]) # check current grade level < high grade of the school (exclude graduates)
+        )
 
-        # check that entry date <= Oct 1 and exit date >= Oct 1
-        enrolled = baseyear_df[
-            (baseyear_df['ENTRY_DATE'] <= self.config.base20th) &
-            (baseyear_df['EXIT_DATE'] >= self.config.base20th)]
-
-        # check current grade level < high grade of the school (exclude graduates)
-        eligible = enrolled[enrolled['GRADE_LEVEL'] < enrolled['HIGH_GRADE']]
+        eligible = self.df.loc[eligibility]
 
         # get student ID and school name
         self.eligible_entries = set(zip(eligible['STUDENT_ID'], eligible['SCHOOL_NAME']))
@@ -57,7 +55,7 @@ class RetentionCalculator:
         for student_id, school_name in self.final_retained:
             if school_name not in school_retained:
                 school_retained[school_name] = 0
-            school_retained[school_name] += 1        
+            school_retained[school_name] += 1
 
         return school_eligible, school_retained
 
@@ -67,7 +65,7 @@ class RetentionCalculator:
 
         # retention rate for each school
         rates = []
-        for school_name, eligible_count in school_eligible.items(): 
+        for school_name, eligible_count in school_eligible.items():
             retained_count = school_retained.get(school_name, 0) # the 0 means default to 0
 
             rate = (retained_count / eligible_count) * 100
@@ -76,9 +74,7 @@ class RetentionCalculator:
 
         self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
 
-    def graph(self):    
-        fig, ax = plt.subplots()
-
+    def graph(self):
         baseyear = self.config.baseyear
         targetyear = self.config.targetyear
 
@@ -98,9 +94,9 @@ class RetentionCalculator:
                 school = row['SCHOOL_NAME']
                 rate = row['RETENTION_RATE']
                 historical_retention.setdefault(school, [None] * self.config.numyears)[i] = rate
-            self.config.baseyear += 1       
+            self.config.baseyear += 1
 
-        print(f"\n--- historical_retention ---")
+        print(f"\n --- Historical Retention by School ---")
         for school, rates in historical_retention.items():
             print(f"{school}: {rates}")
 
@@ -109,22 +105,56 @@ class RetentionCalculator:
         self.config.targetyear = targetyear
         self.config.base20th = pd.Timestamp(year=baseyear, month=10, day=1)
         self.config.target20th = pd.Timestamp(year=targetyear, month=10, day=1)
-        
+
+        # graph
+        fig = go.Figure()
+
         # skip schools without a retention rate for each year
         for school_name, rates in historical_retention.items():
             if None not in rates:
-                ax.plot(years, rates, marker='o', label=school_name)
+              # graph lines only (no hover)
+              fig.add_trace(go.Scatter(
+                  x=years,
+                  y=rates,
+                  mode='lines',
+                  line=dict(width=2),
+                  hoverinfo='skip',
+                  showlegend=False
+              ))
+              # graph markers only (displays when hovered over)
+              fig.add_trace(go.Scatter(
+                  x=years,
+                  y=rates,
+                  mode='markers',
+                  marker=dict(size=8),
+                  name=school_name,
+                  hovertemplate=(
+                      f"School: {school_name}<br>"
+                      "Year: %{x:.0f}<br>"
+                      "Retention: %{y:.1f}%"
+                      "<extra></extra>"
+                  )
+              ))
 
         # configure graph
-        ax.set_xlim(baseyear - 1, targetyear)
-        ax.set_ylim(0, 100)
-        ax.set_xticks(years)
-        ax.set_title(f"Yearly Retention from SY{baseyear}-{targetyear}")
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Retention Rate (%)")
-        ax.legend()
+        fig.update_layout(title_xanchor='center')
+        fig.update_layout(
+          xaxis=dict(
+              title='Year',
+              range=[baseyear - 1, targetyear],
+              tickmode='array',
+              tickvals=years
+          ),
+          yaxis=dict(
+              title='Retention Rate (%)',
+              range=[0, 100]
+          ),
+          title=f"Yearly Retention from SY{baseyear}-{targetyear}",
+          width=1000,
+          height=600
+        )
 
-        return fig
+        fig.show()
 
     def run(self):
         self.build_eligible_entries()
