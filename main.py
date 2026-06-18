@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
-import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import datetime
 from DataCSV import DataCSV
 from ParameterConfig import ParameterConfig
 from RetentionCalculator import RetentionCalculator
@@ -52,6 +50,3 @@ if filepath:
 
 else:
     print("No file was selected.")
-
-
-
