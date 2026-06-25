@@ -4,7 +4,7 @@ def calc_school_year(ENTRY_DATE):
     if pd.isnull(ENTRY_DATE):
         return None
 
-    # ex: if entry date is 2022-08-22, year is 2022 (SY 22-23)
+    # ex: if entry date is 2024-08-22, year is 2025 (SY 24-25)
     if ENTRY_DATE.month >= 7: # if month is July or later, school year is current year
         return ENTRY_DATE.year
     else: # if month is before July, school year is previous year
