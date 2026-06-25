@@ -36,20 +36,21 @@ def school_name(entry, loomistoggle):
             return "Ralph Ellison Academy"
         else:
             return entry["SCHOOL_NAME"]
-        
+
 class DataCSV:
-    def __init__(self, filepath, loomistoggle=False):
+    def __init__(self, filepath=None, loomistoggle=False, dataframe=None):
         self.filepath = filepath # allows other methods access to the file path
-        self.df = None # initializes an empty df to store the data
+        self.df = dataframe # initializes an empty df to store the data
         self.loomistoggle = loomistoggle
 
     def load(self):
-        self.df = pd.read_csv(self.filepath) # read csv file and store in df
+      if self.filepath is not None:
+          self.df = pd.read_csv(self.filepath)
 
     def clean(self):
         self.df["ENTRY_DATE"] = pd.to_datetime(self.df["ENTRY_DATE"], errors='coerce') # cast entry date to datetime, coerce to turn unparsable into null
         self.df["EXIT_DATE"] = pd.to_datetime(self.df["EXIT_DATE"], errors='coerce') # cast exit  date to datetime
-
+        self.df["LOW_GRADE"] = pd.to_numeric(self.df["LOW_GRADE"], errors='coerce') # cast low grade to numeric
         self.df["HIGH_GRADE"] = pd.to_numeric(self.df["HIGH_GRADE"], errors='coerce') # cast high grade to numeric
         self.df["GRADE_LEVEL"] = pd.to_numeric(self.df["GRADE_LEVEL"], errors='coerce') # cast grade level to numeric
 
@@ -57,19 +58,24 @@ class DataCSV:
         self.df = self.df.dropna(subset=[
             "ENTRY_DATE",
             "EXIT_DATE",
+            "LOW_GRADE",
             "HIGH_GRADE",
             "GRADE_LEVEL",
             "STUDENT_ID",
             "SCHOOL_NAME"
-        ])
+        ]).copy()
 
-        self.df["HIGH_GRADE"] = self.df["HIGH_GRADE"].astype(int) # cast high grade to int  
+        self.df["LOW_GRADE"] = self.df["LOW_GRADE"].astype(int) # cast low grade to int
+        self.df["HIGH_GRADE"] = self.df["HIGH_GRADE"].astype(int) # cast high grade to int
         self.df["GRADE_LEVEL"] = self.df["GRADE_LEVEL"].astype(int) # cast grade level to int
         self.df["school_year"] = self.df["ENTRY_DATE"].apply(calc_school_year) # get school year from entry date
         self.df["SCHOOL_NAME"] = self.df.apply(lambda row: school_name(row, self.loomistoggle), axis=1)
 
         # remove graduated students
         self.df = self.df[self.df["SCHOOL_NAME"] != "Graduated Students"]
+
+        # remove test cases
+        self.df = self.df[~self.df["LASTFIRST"].str.contains("test", case=False, na=False)]
 
         # remove invalid schools
         self.df = self.df[~self.df["SCHOOL_NAME"].str.contains("DONT USE|Quest|Boy's Lab|Jackson|Larry|Global|Inactive|Summer|STRIDE", case=False)]
@@ -78,13 +84,14 @@ class DataCSV:
         if self.loomistoggle:
             self.df.loc[self.df["SCHOOL_NAME"] == "Loomis", "HIGH_GRADE"] = 2
         # if toggle off, Loomis is K-3 so high grade should be 3
-        else: 
+        else:
             self.df.loc[self.df["SCHOOL_NAME"] == "Loomis", "HIGH_GRADE"] = 3
 
         # create a combined Loomis Longwood K-12 entry
         new_entries = self.df[self.df["SCHOOL_NAME"].str.contains("Longwood|Loomis", na=False)].copy()
         new_entries["SCHOOL_NAME"] = "Loomis Longwood K-12"
         new_entries["HIGH_GRADE"] = 12
+        new_entries["LOW_GRADE"] = 0
         self.df = pd.concat([self.df, new_entries], ignore_index=True)
 
     def getdf(self):

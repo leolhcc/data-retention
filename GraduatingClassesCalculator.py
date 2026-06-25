@@ -1,5 +1,6 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.express as px
 
 class GraduatingClassesCalculator:
     def __init__(self, df, config):
@@ -14,13 +15,27 @@ class GraduatingClassesCalculator:
         enrolled = baseyear_df[
             (baseyear_df['ENTRY_DATE'] <= self.config.base20th) &
             (baseyear_df['EXIT_DATE'] >= self.config.base20th)]
-        
+
         graduating = enrolled[enrolled['GRADE_LEVEL'] == enrolled['HIGH_GRADE']]
-        
+
         return set(zip(graduating['STUDENT_ID'], graduating['SCHOOL_NAME']))
-    
+
     def count_years_enrolled(self, graduating_class):
         years_enrolled = dict.fromkeys(graduating_class, 1) # initializes tenure to 1 for each student
+
+        # set maximum tenure for Loomis based on toggle
+        loomis_max = 3 if self.config.loomistoggle else 4
+        max_tenures = {}
+        for _, school_name in graduating_class:
+            if school_name not in max_tenures:
+                if school_name == "Loomis":
+                    max_tenures[school_name] = loomis_max
+                else:
+                    school_rows = self.df[self.df['SCHOOL_NAME'] == school_name]
+                    if not school_rows.empty:
+                        high_grade = school_rows['HIGH_GRADE'].iloc[0]
+                        low_grade = school_rows['LOW_GRADE'].iloc[0]
+                        max_tenures[school_name] = high_grade - low_grade + 1
 
         current_year = self.config.baseyear - 1
 
@@ -42,17 +57,22 @@ class GraduatingClassesCalculator:
 
             current_year_matches = 0 # num grads enrolled in this school this year
             for student in graduating_class:
-                if student in enrolled_grads:
+
+                student_id, school_name = student
+
+                max_tenure = max_tenures.get(school_name, 999)
+
+                if student in enrolled_grads and years_enrolled[student] < max_tenure:
                     years_enrolled[student] += 1
                     current_year_matches += 1
-            
+
             if current_year_matches == 0: # if no graduating students were at their school this year
                 break
 
             current_year -= 1 # move to the previous year
 
         return years_enrolled
-    
+
     def calculate_years(self):
         graduating_class = self.build_graduating()
         years_enrolled = self.count_years_enrolled(graduating_class)
@@ -72,41 +92,53 @@ class GraduatingClassesCalculator:
 
         self.tenure_data = pd.DataFrame(schools)
         return self.tenure_data
-    
+
     def graph(self):
         if self.tenure_data is None:
             self.calculate_years()
 
         # pivot data so each row is a different campus
         pivot_df = self.tenure_data.pivot(
-            index='school', 
-            columns='tenure', 
+            index='school',
+            columns='tenure',
             values='percentage'
         ).fillna(0)
 
         pivot_df = pivot_df.sort_index(ascending=False)
 
-        fig, ax = plt.subplots()
-        
-        pivot_df.plot(
-            kind='barh', 
-            stacked=True, 
-            ax=ax, 
-            cmap='viridis', 
-        )
+        # graph
+        fig = go.Figure()
+
+        colors = px.colors.sample_colorscale('viridis', len(pivot_df.columns))
+
+        for i, tenure_year in enumerate(pivot_df.columns):
+            fig.add_trace(go.Bar(
+                y=pivot_df.index,
+                x=pivot_df[tenure_year],
+                marker_color=colors[i],
+                orientation='h',
+                name=str(i+1),
+                hovertemplate=(
+                    f"Tenure: {tenure_year}<br>"
+                    f"Percentage: %{{x:.2f}}%"
+                    "<extra></extra>"
+                )
+            ))
 
         # configuration
-        ax.set_title(f"Graduating Class Tenure Distribution (SY {self.config.baseyear})")
-        ax.set_xlabel("Percentage of Graduating Class (%)")
-        ax.set_ylabel("Campus")
-        ax.set_xlim(0, 100)
-
-        ax.legend(
-            title="Years Enrolled", 
-            loc='upper left', 
-            title_fontsize='11', 
-            fontsize='10'
+        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear})")
+        fig.update_layout(
+            xaxis=dict(
+                title="Percentage of Graduating Class (%)",
+                range=[0, 100]
+            ),
+            yaxis=dict(
+                title="School"
+            ),
+            barmode='stack',
+            width=1000,
+            height=500,
+            legend_title_text="Tenure (years)"
         )
 
-        plt.tight_layout()
-        return fig
+        fig.show()

@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 class RetentionCalculator:
     def __init__(self, df, config):
@@ -74,6 +75,7 @@ class RetentionCalculator:
 
         self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
 
+
     def graph(self):
         baseyear = self.config.baseyear
         targetyear = self.config.targetyear
@@ -93,12 +95,10 @@ class RetentionCalculator:
             for _, row in rates_df.iterrows():
                 school = row['SCHOOL_NAME']
                 rate = row['RETENTION_RATE']
-                historical_retention.setdefault(school, [None] * self.config.numyears)[i] = rate
+                if school not in historical_retention:
+                    historical_retention[school] = [None] * self.config.numyears
+                historical_retention[school][i] = rate
             self.config.baseyear += 1
-
-        print(f"\n --- Historical Retention by School ---")
-        for school, rates in historical_retention.items():
-            print(f"{school}: {rates}")
 
         # reset values
         self.config.baseyear = baseyear
@@ -109,32 +109,33 @@ class RetentionCalculator:
         # graph
         fig = go.Figure()
 
-        # skip schools without a retention rate for each year
-        for school_name, rates in historical_retention.items():
-            if None not in rates:
-              # graph lines only (no hover)
-              fig.add_trace(go.Scatter(
-                  x=years,
-                  y=rates,
-                  mode='lines',
-                  line=dict(width=2),
-                  hoverinfo='skip',
-                  showlegend=False
-              ))
-              # graph markers only (displays when hovered over)
-              fig.add_trace(go.Scatter(
-                  x=years,
-                  y=rates,
-                  mode='markers',
-                  marker=dict(size=8),
-                  name=school_name,
-                  hovertemplate=(
-                      f"School: {school_name}<br>"
-                      "Year: %{x:.0f}<br>"
-                      "Retention: %{y:.1f}%"
-                      "<extra></extra>"
-                  )
-              ))
+        schools = sorted(historical_retention.keys())
+        colors = px.colors.qualitative.Prism
+        color_map = {school: colors[i % len(colors)] for i, school in enumerate(schools)}
+
+        # skip None retention rates
+        for school_name, rates in sorted(historical_retention.items()):
+            color = color_map[school_name]
+            points = [(yr, r) for yr, r in zip(years, rates) if r is not None]
+            if not points:
+                continue
+            x_vals, y_vals = zip(*points)
+
+            fig.add_trace(go.Scatter(
+                x=x_vals,
+                y=y_vals,
+                mode='lines+markers',
+                line=dict(width=2,color=color),
+                name=school_name,
+                hovertemplate=(
+                    f"School: {school_name}<br>"
+                    "Year: %{x:.0f}<br>"
+                    "Retention: %{y:.1f}%"
+                    "<extra></extra>"
+                ),
+                hoveron='points', # hover only on points
+                hoverinfo='all',
+            ))
 
         # configure graph
         fig.update_layout(title_xanchor='center')
@@ -143,7 +144,7 @@ class RetentionCalculator:
               title='Year',
               range=[baseyear - 1, targetyear],
               tickmode='array',
-              tickvals=years
+              tickvals=x_vals
           ),
           yaxis=dict(
               title='Retention Rate (%)',
@@ -151,7 +152,8 @@ class RetentionCalculator:
           ),
           title=f"Yearly Retention from SY{baseyear}-{targetyear}",
           width=1000,
-          height=600
+          height=600,
+          legend_title_text="Schools"
         )
 
         fig.show()
