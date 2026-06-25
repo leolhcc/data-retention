@@ -105,24 +105,21 @@ class RetentionCalculator:
         # graph
         fig = go.Figure()
 
-        # assign a color to every school upfront
         schools = sorted(historical_retention.keys())
-        colors = px.colors.sample_colorscale('viridis', len(schools))
-        color_map = dict(zip(schools, colors))
+        colors = px.colors.qualitative.Prism
+        color_map = {school: colors[i % len(colors)] for i, school in enumerate(schools)}
 
-        # skip schools without a retention rate for each year
+        # skip None retention rates
         for school_name, rates in sorted(historical_retention.items()):
-
-            valid_pairs = [(year, rate) for year, rate in zip(years, rates) if rate is not None]
-            # skip school entirely if it has no data at all
-            if not valid_pairs:
+            color = color_map[school_name]
+            points = [(yr, r) for yr, r in zip(years, rates) if r is not None]
+            if not points:
                 continue
-            # unzip back into separate year and rate lists
-            valid_years, valid_rates = zip(*valid_pairs)
+            x_vals, y_vals = zip(*points)
 
             fig.add_trace(go.Scatter(
-                x=list(valid_years),
-                y=list(valid_rates),
+                x=x_vals,
+                y=y_vals,
                 mode='lines+markers',
                 line=dict(width=2,color=color_map[school_name]),
                 name=school_name,
