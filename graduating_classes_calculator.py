@@ -126,7 +126,7 @@ class GraduatingClassesCalculator:
             ))
 
         # configuration
-        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear})")
+        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear}-{self.config.baseyear+1})")
         fig.update_layout(
             xaxis=dict(
                 title="Percentage of Graduating Class (%)",
