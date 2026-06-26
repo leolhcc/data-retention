@@ -15,7 +15,7 @@ def school_name(entry, loomistoggle):
     grade = entry["GRADE_LEVEL"]
 
     # Loomis K-2, Longwood ES 3-8
-    if "Loomis Longwood" in name:
+    if "Longwood" in name:
         if loomistoggle:
             # toggle on: Loomis is K-2, Longwood ES is 3-8
             if grade <= 2:

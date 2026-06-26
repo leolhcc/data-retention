@@ -15,9 +15,8 @@ class TenureCalculator:
 
         enrolled = baseyear_df[
             (baseyear_df['ENTRY_DATE'] <= self.config.base20th) &
-            (baseyear_df['EXIT_DATE'] >= self.config.base20th)]
-        
-        print(f"Eligible students in base year: {len(enrolled)}")
+            (baseyear_df['EXIT_DATE'] >= self.config.base20th) &
+            (baseyear_df['GRADE_LEVEL'] <= baseyear_df['HIGH_GRADE'])]
 
         eligible = enrolled[enrolled['GRADE_LEVEL'] == self.config.grade]
 
@@ -81,6 +80,19 @@ class TenureCalculator:
     def calculate_rates(self):
         eligible_students = self.build_eligible()
         years_enrolled = self.count_years_enrolled(eligible_students)
+
+
+        if self.config.grade == 9:
+            print("\n--- DEBUG: Students with Grade Level 0 and Tenure > 1 ---")
+            found_any = False
+            for (student_id, school_name), tenure in years_enrolled.items():
+                if tenure > 1:
+                    print(f"ID: {student_id} | School: {school_name} | Calculated Tenure: {tenure}")
+                    found_any = True
+            if not found_any:
+                print("No students found with grade level 0 and tenure > 1.")
+            print("--------------------------------------------------------\n")
+
 
         school_class_tenure = {} # dictionary structure is { school: { tenure: num students} }
         for (_, school_name), tenure in years_enrolled.items():
