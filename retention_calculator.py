@@ -75,6 +75,7 @@ class RetentionCalculator:
 
         self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
 
+
     def graph(self):
         baseyear = self.config.baseyear
         targetyear = self.config.targetyear
@@ -94,7 +95,10 @@ class RetentionCalculator:
             for _, row in rates_df.iterrows():
                 school = row['SCHOOL_NAME']
                 rate = row['RETENTION_RATE']
-                historical_retention.setdefault(school, [None] * self.config.numyears)[i] = rate
+                if school not in historical_retention:
+                    historical_retention[school] = [None] * self.config.numyears
+                historical_retention[school][i] = rate
+            self.config.baseyear += 1
 
         # reset values
         self.config.baseyear = baseyear
@@ -121,7 +125,7 @@ class RetentionCalculator:
                 x=x_vals,
                 y=y_vals,
                 mode='lines+markers',
-                line=dict(width=2,color=color_map[school_name]),
+                line=dict(width=2,color=color),
                 name=school_name,
                 hovertemplate=(
                     f"School: {school_name}<br>"
@@ -137,16 +141,16 @@ class RetentionCalculator:
         fig.update_layout(title_xanchor='center')
         fig.update_layout(
           xaxis=dict(
-              title='Year',
+              title='School Year',
               range=[baseyear - 1, targetyear],
               tickmode='array',
-              tickvals=years
+              tickvals=x_vals
           ),
           yaxis=dict(
               title='Retention Rate (%)',
               range=[0, 100]
           ),
-          title=f"Yearly Retention from SY{baseyear}-{targetyear}",
+          title=f"Yearly Retention from {baseyear}-{targetyear}",
           width=1000,
           height=600,
           legend_title_text="Schools"

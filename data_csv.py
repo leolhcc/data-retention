@@ -4,7 +4,7 @@ def calc_school_year(ENTRY_DATE):
     if pd.isnull(ENTRY_DATE):
         return None
 
-    # ex: if entry date is 2024-08-22, year is 2025 (SY 24-25)
+    # ex: if entry date is 2022-08-22, year is 2022 (SY 22-23)
     if ENTRY_DATE.month >= 7: # if month is July or later, school year is current year
         return ENTRY_DATE.year
     else: # if month is before July, school year is previous year
@@ -20,14 +20,18 @@ def school_name(entry, loomistoggle):
             # toggle on: Loomis is K-2, Longwood ES is 3-8
             if grade <= 2:
                 return "Loomis"
-            else:
+            elif grade <= 8:
                 return "Longwood ES"
+            else:
+                return "Longwood HS"
         else:
             # toggle off: Loomis is K-3, Longwood ES is 4-8
             if grade <= 3:
                 return "Loomis"
-            else:
+            elif grade <= 8:
                 return "Longwood ES"
+            else:
+                return "Longwood HS"
     elif "Wrightwood" in name:
         return "Wrightwood"
     elif "Ellison" in name:

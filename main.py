@@ -7,7 +7,7 @@ from datetime import datetime
 from data_csv import DataCSV
 from parameter_config import ParameterConfig
 from retention_calculator import RetentionCalculator
-from graduating_classes_calculator import GraduatingClassesCalculator
+from tenure_calculator import TenureCalculator
 
 # hide the main root window
 root = tk.Tk()
@@ -23,6 +23,7 @@ if filepath:
     file = DataCSV(filepath)
     file.load()
     file.clean()
+
     print(f"Loaded: {filepath}")
 
     # get the dataframe
@@ -32,15 +33,15 @@ if filepath:
     baseyear = int(input("Enter the base year (2025 for SY24-25): "))
     numyears = int(input("Enter the number of years forward: "))
     loomistoggle = input("Loomis K-2, Longwood 3-8? (y/n) Otherwise Loomis K-3, Longwood 4-8: ").lower() == 'y'
-    config = ParameterConfig(baseyear, numyears, loomistoggle)
-
+    grade = int(input("Enter the grade level (e.g., 0, 1, 2, 3, etc.): "))
+    config = ParameterConfig(baseyear, numyears, loomistoggle, grade)
 
     retention_calculator = RetentionCalculator(df, config)
     retention_rates = retention_calculator.run()
     retention_graph = retention_calculator.graph()
 
-    graduating_classes = GraduatingClassesCalculator(df, config)
-    graduating_tenure = graduating_classes.calculate_years()
+    graduating_classes = TenureCalculator(df, config)
+    graduating_tenure = graduating_classes.calculate_rates()
     tenure_graph = graduating_classes.graph()
 
 else:
