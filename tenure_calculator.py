@@ -2,31 +2,35 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-class GraduatingClassesCalculator:
+class TenureCalculator:
     def __init__(self, df, config):
         self.df = df
         self.config = config
         self.tenure_data = None
 
-    def build_graduating(self):
+    # TO IMPLEMENT GRADE LEVEL FILTERING
+    def build_eligible(self):
         # students in the base year (will be going backwards)
         baseyear_df = self.df[self.df['school_year'] == self.config.baseyear]
 
         enrolled = baseyear_df[
             (baseyear_df['ENTRY_DATE'] <= self.config.base20th) &
-            (baseyear_df['EXIT_DATE'] >= self.config.base20th)]
+            (baseyear_df['EXIT_DATE'] >= self.config.base20th) &
+            (baseyear_df['GRADE_LEVEL'] <= baseyear_df['HIGH_GRADE'])]
 
-        graduating = enrolled[enrolled['GRADE_LEVEL'] == enrolled['HIGH_GRADE']]
+        eligible = enrolled[enrolled['GRADE_LEVEL'] == self.config.gradefilter]
 
-        return set(zip(graduating['STUDENT_ID'], graduating['SCHOOL_NAME']))
+        return set(zip(eligible['STUDENT_ID'], eligible['SCHOOL_NAME']))
+    
+    
 
-    def count_years_enrolled(self, graduating_class):
-        years_enrolled = dict.fromkeys(graduating_class, 1) # initializes tenure to 1 for each student
+    def count_years_enrolled(self, eligible_students):
+        years_enrolled = dict.fromkeys(eligible_students, 1) # initializes tenure to 1 for each student
 
         # set maximum tenure for Loomis based on toggle
         loomis_max = 3 if self.config.loomistoggle else 4
         max_tenures = {}
-        for _, school_name in graduating_class:
+        for _, school_name in eligible_students:
             if school_name not in max_tenures:
                 if school_name == "Loomis":
                     max_tenures[school_name] = loomis_max
@@ -39,7 +43,7 @@ class GraduatingClassesCalculator:
 
         current_year = self.config.baseyear - 1
 
-        while True: # go backwards until no more graduating students match
+        while True: # go backwards until no more eligible students match
             year_df = self.df[self.df['school_year'] == current_year]
 
             # no more entries in csv
@@ -53,38 +57,38 @@ class GraduatingClassesCalculator:
                 (year_df['ENTRY_DATE'] <= year_20th) &
                 (year_df['EXIT_DATE'] >= year_20th)
             ]
-            enrolled_grads = set(zip(enrolled['STUDENT_ID'], enrolled['SCHOOL_NAME']))
+            enrolled_eligible = set(zip(enrolled['STUDENT_ID'], enrolled['SCHOOL_NAME']))
 
-            current_year_matches = 0 # num grads enrolled in this school this year
-            for student in graduating_class:
+            current_year_matches = 0 # num eligible students enrolled in this school this year
+            for student in eligible_students:
                 
                 student_id, school_name = student
 
                 max_tenure = max_tenures.get(school_name, 999)
 
-                if student in enrolled_grads and years_enrolled[student] < max_tenure:
+                if student in enrolled_eligible and years_enrolled[student] < max_tenure:
                     years_enrolled[student] += 1
                     current_year_matches += 1
 
-            if current_year_matches == 0: # if no graduating students were at their school this year
+            if current_year_matches == 0: # if no eligible students were at their school this year
                 break
 
             current_year -= 1 # move to the previous year
 
         return years_enrolled
 
-    def calculate_years(self):
-        graduating_class = self.build_graduating()
-        years_enrolled = self.count_years_enrolled(graduating_class)
+    def calculate_rates(self):
+        eligible_students = self.build_eligible()
+        years_enrolled = self.count_years_enrolled(eligible_students)
 
-        school_grad_tenure = {} # dictionary structure is { school: { tenure: num students} }
+        school_class_tenure = {} # dictionary structure is { school: { tenure: num students} }
         for (_, school_name), tenure in years_enrolled.items():
-            if school_name not in school_grad_tenure:
-                school_grad_tenure[school_name] = {}
-            school_grad_tenure[school_name][tenure] = school_grad_tenure[school_name].get(tenure, 0) + 1
+            if school_name not in school_class_tenure:
+                school_class_tenure[school_name] = {}
+            school_class_tenure[school_name][tenure] = school_class_tenure[school_name].get(tenure, 0) + 1
 
         schools = []
-        for school_name, tenure_counts in school_grad_tenure.items():
+        for school_name, tenure_counts in school_class_tenure.items():
             total = sum(tenure_counts.values())
             for tenure, count in tenure_counts.items():
                 tenure_percentage = (count / total) * 100
@@ -95,7 +99,7 @@ class GraduatingClassesCalculator:
 
     def graph(self):
         if self.tenure_data is None:
-            self.calculate_years()
+            self.calculate_rates()
 
         # pivot data so each row is a different campus
         pivot_df = self.tenure_data.pivot(
@@ -126,7 +130,7 @@ class GraduatingClassesCalculator:
             ))
 
         # configuration
-        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear}-{self.config.baseyear+1})")
+        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear + 1})")
         fig.update_layout(
             xaxis=dict(
                 title="Percentage of Graduating Class (%)",

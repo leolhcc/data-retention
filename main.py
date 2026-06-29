@@ -40,7 +40,7 @@ if filepath:
     retention_graph = retention_calculator.graph()
 
     graduating_classes = TenureCalculator(df, config)
-    graduating_tenure = graduating_classes.calculate_rates()
+    graduating_tenure = graduating_classes.calculate_years()
     tenure_graph = graduating_classes.graph()
 
 else:
