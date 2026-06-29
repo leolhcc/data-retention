@@ -130,10 +130,15 @@ class TenureCalculator:
             ))
 
         # configuration
-        fig.update_layout(title=f"Graduating Class Tenure Distribution (SY {self.config.baseyear + 1})")
+        if self.config.gradefilter == 0:
+            fig.update_layout(title=f"Kindergarten Tenure Distribution (SY {self.config.baseyear + 1})")
+        elif self.config.gradefilter == None:
+            fig.update_layout(title=f"Overall Tenure Distribution (SY {self.config.baseyear + 1})")
+        else:
+            fig.update_layout(title=f"Grade {self.config.gradefilter} Tenure Distribution (SY {self.config.baseyear + 1})")
         fig.update_layout(
             xaxis=dict(
-                title="Percentage of Graduating Class (%)",
+                title="Percentage of Grade Level (%)",
                 range=[0, 100]
             ),
             yaxis=dict(
