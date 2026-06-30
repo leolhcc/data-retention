@@ -27,6 +27,7 @@ class RetentionCalculator:
         # grade filtering (when applicable)
         if self.config.gradefilter is not None:
             eligible = eligible[eligible["GRADE_LEVEL"] == self.config.gradefilter]
+            eligible = eligible[eligible["SCHOOL_NAME"] != "Loomis Longwood K-12"]
 
         # get student ID and school name
         self.eligible_entries = set(zip(eligible['STUDENT_ID'], eligible['SCHOOL_NAME']))
@@ -72,18 +73,20 @@ class RetentionCalculator:
         rates = []
         for school_name, eligible_count in school_eligible.items():
             retained_count = school_retained.get(school_name, 0) # the 0 means default to 0
-
             rate = (retained_count / eligible_count) * 100
-
             rates.append((school_name, rate))
 
         self.retention_rates = pd.DataFrame(rates, columns=['SCHOOL_NAME', 'RETENTION_RATE'])
 
+    def run(self):
+        self.build_eligible_entries()
+        self.build_retained_entries()
+        self.calculate_retention_rates()
+        return self.retention_rates
 
     def graph(self):
         baseyear = self.config.baseyear
         targetyear = self.config.targetyear
-
         years = list(range(baseyear, targetyear))
         historical_retention = {}
 
@@ -111,7 +114,6 @@ class RetentionCalculator:
 
         # graph
         fig = go.Figure()
-
         schools = sorted(historical_retention.keys())
         colors = px.colors.qualitative.Prism
         color_map = {school: colors[i % len(colors)] for i, school in enumerate(schools)}
@@ -130,6 +132,7 @@ class RetentionCalculator:
                 mode='lines+markers',
                 line=dict(width=2,color=color),
                 name=school_name,
+                customdata=[school_name] * len(x_vals),
                 hovertemplate=(
                     f"School: {school_name}<br>"
                     "Year: %{x:.0f}<br>"
@@ -140,12 +143,11 @@ class RetentionCalculator:
                 hoverinfo='all',
             ))
 
-        # congifure graph based on grade filtering
+        # configure title of graph based on grade filtering
         if self.config.gradefilter is not None:
             title = f"Grade {self.config.gradefilter} Retention SY{baseyear} to SY{targetyear}"
         else:
             title = f"Yearly Retention SY{baseyear} to SY{targetyear}"
-
 
         # configure graph
         fig.update_layout(
@@ -167,12 +169,89 @@ class RetentionCalculator:
             legend_title_text="Schools"
         )
 
-        fig.show()
-        return self.retention_rates
+        return fig
+        #fig.show()
+        #return self.retention_rates
 
-    def run(self):
-        self.build_eligible_entries()
-        self.build_retained_entries()
-        self.calculate_retention_rates()
+    def school_drilldown(self, school_name):
+        baseyear = self.config.baseyear
+        targetyear = self.config.targetyear
+        years = list(range(baseyear, targetyear))
 
-        return self.retention_rates
+        schools = self.df[self.df['SCHOOL_NAME'] == school_name]
+        low_grade = schools['LOW_GRADE'].iloc[0]
+        high_grade = schools['HIGH_GRADE'].iloc[0]
+        grades = list(range(low_grade, high_grade + 1))
+
+        grade_retention = {grade: [None] * self.config.numyears for grade in grades}
+        grade_filter = self.config.gradefilter
+
+        for i in range(self.config.numyears):
+            self.config.baseyear = baseyear + i
+            self.config.targetyear = baseyear + i + 1
+            self.config.base20th = pd.Timestamp(year=self.config.baseyear, month=10, day=1)
+            self.config.target20th = pd.Timestamp(year=self.config.targetyear, month=10, day=1)
+
+            for grade in grades:
+                self.config.gradefilter = grade
+                self.run()
+
+                # get retention rate for a specific school
+                school_match = self.retention_rates[self.retention_rates['SCHOOL_NAME'] == school_name]
+                if not school_match.empty:
+                    grade_retention[grade][i] = school_match['RETENTION_RATE'].values[0]
+
+        # reset values
+        self.config.baseyear = baseyear
+        self.config.targetyear = targetyear
+        self.config.base20th = pd.Timestamp(year=baseyear, month=10, day=1)
+        self.config.target20th = pd.Timestamp(year=targetyear, month=10, day=1)
+        self.config.gradefilter = grade_filter
+
+        fig = go.Figure()
+        colors = px.colors.qualitative.Prism
+        color_map = {grade: colors[i % len(colors)] for i, grade in enumerate(grades)}
+
+        for grade, rates in sorted(grade_retention.items()):
+            color = color_map[grade]
+            points = [(yr, r) for yr, r in zip(years, rates) if r is not None]
+            if not points:
+                continue
+            x_vals, y_vals = zip(*points)
+
+            fig.add_trace(go.Scatter(
+                x=x_vals,
+                y=y_vals,
+                mode='lines+markers',
+                line=dict(width=2,color=color),
+                name=f"Grade {grade}",
+                customdata=[school_name] * len(x_vals), 
+                hovertemplate=(
+                    f"Grade: {grade}<br>"
+                    "Year: %{x:.0f}<br>"
+                    "Retention: %{y:.1f}%"
+                    "<extra></extra>"
+                ),
+                hoveron='points', # hover only on points
+                hoverinfo='all',
+            ))
+
+            fig.update_layout(
+            title = f"{school_name} - Retention by Grade SY{baseyear} to SY{targetyear}",
+            title_xanchor='center',
+            xaxis=dict(
+                title='School Year',
+                range=[baseyear - 1, targetyear],
+                tickmode='array',
+                tickvals=x_vals
+            ),
+            yaxis=dict(
+                title='Retention Rate (%)',
+                range=[0, 100]
+            ),
+            width=1000,
+            height=600,
+            legend_title_text="Grade"
+            )
+
+        return fig
