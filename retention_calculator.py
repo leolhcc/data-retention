@@ -152,7 +152,7 @@ class RetentionCalculator:
         # configure graph
         fig.update_layout(
             title = title,
-            title_xanchor='center',
+            title_xanchor='right',
             xaxis=dict(
                 title='School Year',
                 range=[baseyear - 1, targetyear],
@@ -238,7 +238,7 @@ class RetentionCalculator:
 
             fig.update_layout(
             title = f"{school_name} - Retention by Grade SY{baseyear} to SY{targetyear}",
-            title_xanchor='center',
+            title_xanchor='right',
             xaxis=dict(
                 title='School Year',
                 range=[baseyear - 1, targetyear],
