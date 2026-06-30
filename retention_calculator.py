@@ -136,7 +136,7 @@ class RetentionCalculator:
                 hovertemplate=(
                     f"School: {school_name}<br>"
                     "Year: %{x:.0f}<br>"
-                    "Retention: %{y:.1f}%"
+                    "Retention: %{y:.2f}%"
                     "<extra></extra>"
                 ),
                 hoveron='points', # hover only on points
@@ -229,7 +229,7 @@ class RetentionCalculator:
                 hovertemplate=(
                     f"Grade: {grade}<br>"
                     "Year: %{x:.0f}<br>"
-                    "Retention: %{y:.1f}%"
+                    "Retention: %{y:.2f}%"
                     "<extra></extra>"
                 ),
                 hoveron='points', # hover only on points

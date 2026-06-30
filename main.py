@@ -31,14 +31,11 @@ if filepath:
 
     # inputs (base year, number of years forward)
     baseyear = int(input("Enter the base year (2025 for SY24-25): "))
-    numyears = int(input("Enter the number of years forward: "))
+    numyears = int(input("Enter the number of years forward: ")) #unused for tenure
     loomistoggle = input("Loomis K-2, Longwood 3-8? (y/n) Otherwise Loomis K-3, Longwood 4-8: ").lower() == 'y'
     gradeinput = input("Enter the grade level (e.g., 0, 1, 2, 3, etc.): ") # enter grade level 
     gradefilter = int(gradeinput) if gradeinput.strip() else None # input cannot be empty for tenure, so empty is only used for retention
     config = ParameterConfig(baseyear, numyears, loomistoggle, gradefilter)
-
-    retention_calculator = RetentionCalculator(df, config)
-    retention_graph = retention_calculator.graph()
 
     graduating_classes = TenureCalculator(df, config)
     graduating_tenure = graduating_classes.calculate_rates()
