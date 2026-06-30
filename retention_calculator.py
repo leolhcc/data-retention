@@ -152,7 +152,7 @@ class RetentionCalculator:
         # configure graph
         fig.update_layout(
             title = title,
-            title_xanchor='right',
+            title_xanchor='left',
             xaxis=dict(
                 title='School Year',
                 range=[baseyear - 1, targetyear],
@@ -179,8 +179,8 @@ class RetentionCalculator:
         years = list(range(baseyear, targetyear))
 
         schools = self.df[self.df['SCHOOL_NAME'] == school_name]
-        low_grade = schools['LOW_GRADE'].iloc[0]
-        high_grade = schools['HIGH_GRADE'].iloc[0]
+        low_grade = int(schools['LOW_GRADE'].min())
+        high_grade = int(schools['HIGH_GRADE'].max())
         grades = list(range(low_grade, high_grade + 1))
 
         grade_retention = {grade: [None] * self.config.numyears for grade in grades}
@@ -238,7 +238,7 @@ class RetentionCalculator:
 
             fig.update_layout(
             title = f"{school_name} - Retention by Grade SY{baseyear} to SY{targetyear}",
-            title_xanchor='right',
+            title_xanchor='left',
             xaxis=dict(
                 title='School Year',
                 range=[baseyear - 1, targetyear],
