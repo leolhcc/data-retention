@@ -132,10 +132,10 @@ class RetentionCalculator:
                 mode='lines+markers',
                 line=dict(width=2,color=color),
                 name=school_name,
-                customdata=[school_name] * len(x_vals),
+                customdata=[[school_name, yr + 1] for yr in x_vals],
                 hovertemplate=(
                     f"School: {school_name}<br>"
-                    "Year: %{x:.0f}<br>"
+                    "School Year: %{customdata[1]}<br>"
                     "Retention: %{y:.2f}%"
                     "<extra></extra>"
                 ),
@@ -145,9 +145,9 @@ class RetentionCalculator:
 
         # configure title of graph based on grade filtering
         if self.config.gradefilter is not None:
-            title = f"Grade {self.config.gradefilter} Retention SY{baseyear} to SY{targetyear}"
+            title = f"Grade {self.config.gradefilter} Yearly Retention from {baseyear} to {targetyear}"
         else:
-            title = f"Yearly Retention SY{baseyear} to SY{targetyear}"
+            title = f"Yearly Retention from {baseyear} to {targetyear}"
 
         # configure graph
         fig.update_layout(
@@ -157,7 +157,8 @@ class RetentionCalculator:
                 title='School Year',
                 range=[baseyear - 1, targetyear],
                 tickmode='array',
-                tickvals=x_vals
+                tickvals=x_vals,
+                ticktext=[str(yr + 1) for yr in x_vals]
             ),
             yaxis=dict(
                 title='Retention Rate (%)',
@@ -237,7 +238,7 @@ class RetentionCalculator:
             ))
 
             fig.update_layout(
-            title = f"{school_name} - Retention by Grade SY{baseyear} to SY{targetyear}",
+            title = f"{school_name} - Retention by Grade from {baseyear} to {targetyear}",
             title_xanchor='left',
             xaxis=dict(
                 title='School Year',
